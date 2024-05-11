@@ -6,16 +6,19 @@ var logger = require('morgan');
 const cors= require('cors');
 const dotenv= require('dotenv');
 dotenv.config()
+const connectDB= require('./config/db');
 
 const adminRouter = require('./routes/admin');
 const usersRouter = require('./routes/users');
 const courtsRouter = require('./routes/courts');
 const paymentsRouter = require('./routes/payments');
 const authRouter = require('./routes/auth');
+const app = express();
+connectDB()
+
 app.use(cors({
   origin:['https://localhost:3000',]
 }))
-var app = express();
 
 
 // view engine setup
