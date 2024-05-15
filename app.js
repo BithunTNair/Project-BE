@@ -17,7 +17,7 @@ const app = express();
 connectDB()
 
 app.use(cors({
-  origin:['https://localhost:3000',]
+  origin:['http://localhost:3000',]
 }))
 
 
