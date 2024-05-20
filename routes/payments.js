@@ -1,9 +1,8 @@
 var express = require('express');
 var router = express.Router();
+const {orders}= require('../controllers/paymentController');
 
-/* GET home page. */
-router.get('/', function(req, res, next) {
-  res.render('index', { title: 'Express' });
-});
+
+router.get('/orders',orders );
 
 module.exports = router;
