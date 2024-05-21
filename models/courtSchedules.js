@@ -17,8 +17,13 @@ const schema=mongoose.Schema({
     },
     courtId:{
         type:mongoose.Types.ObjectId,
-        required:true
-    }
+        required:true,
+        
+    },
+    orderId:{
+        type:mongoose.Types.ObjectId,
+        ref:'orders'
+    },
 })
 
 const courtShedules= mongoose.model('courtSchedules',schema);

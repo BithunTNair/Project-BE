@@ -37,7 +37,7 @@ const getSlotData = ((req, res) => {
     COURT_SCHEDULES.aggregate([
         {
             $match: {
-                courtId: ObjectId(req.query.courtId),
+                courtId: new ObjectId(req.query.courtId),
                 date: currentDate,
                 'slot.id': { $gte: currentHour }
             }
