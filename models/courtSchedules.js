@@ -11,12 +11,9 @@ const schema=mongoose.Schema({
     cost:{
         type:Number
     },
-    bookedby:{
+    bookedBy:{
         type:mongoose.Types.ObjectId,
         ref:'users'
-    },
-    cancellation:{
-        type:Array
     },
     courtId:{
         type:mongoose.Types.ObjectId,
