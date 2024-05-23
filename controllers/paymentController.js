@@ -1,100 +1,106 @@
-
-const ORDERS = require('../models/ordersModel');
-const COURT_SCHEDULES = require('../models/courtSchedules');
+const ORDERS = require("../models/ordersModel");
+const COURT_SCHEDULES = require("../models/courtSchedules");
 const Razorpay = require("razorpay");
-const crypto = require('crypto');
+const crypto = require("crypto");
 
+const orders = async (req, res, next) => {
+  try {
+    const slotData = await COURT_SCHEDULES.find({
+      _id: { $in: req.body.slotIds },
+    });
 
-const orders = (async (req, res, next) => {
-    try {
-
-
-        const slotData = await COURT_SCHEDULES.find({ _id: { $in: req.body.slotIds } });
-       
-        let totalCost = null;
-        for (let slot of slotData) {
-            if (slotData.bookedBy) {
-                res.status(400).json({ message: 'slot is already occupied' });
-                return;
-            }
-            else {
-                totalCost += slot.cost
-            }
-        }
-        console.log(process.env.RP_SECRET_KEY);
-        console.log( process.env.RP_KEY_ID);
-
-        const instance = new Razorpay({
-            key_id: process.env.RP_KEY_ID,
-            key_secret: process.env.RP_SECRET_KEY,
-        });
-        const newOrder = await ORDERS({
-            courtId: req.body.courtId,
-            slotIds: req.body.slotIds,
-            totalCost: totalCost,
-            bookedBy: req.userId
-        }).save()
-        const options = {
-            amount: totalCost * 100,
-            currency: "INR",
-            receipt: newOrder._id,
-        };
-
-        const order = await instance.orders.create(options);
-
-        if (!order) return res.status(500).send("Some error occured");
-
-        res.status(200).json(order);
-
-
-    } catch (error) {
-        console.log({error});
-        
+    let totalCost = null;
+    for (let slot of slotData) {
+      if (slotData.bookedBy) {
+        res.status(400).json({ message: "slot is already occupied" });
+        return;
+      } else {
+        totalCost += slot.cost;
+      }
     }
-});
+    console.log(process.env.RP_SECRET_KEY);
+    console.log(process.env.RP_KEY_ID);
 
+    const instance = new Razorpay({
+      key_id: process.env.RP_KEY_ID,
+      key_secret: process.env.RP_SECRET_KEY,
+    });
+    const newOrder = await ORDERS({
+      courtId: req.body.courtId,
+      slotIds: req.body.slotIds,
+      totalCost: totalCost,
+      bookedBy: req.userId,
+    }).save();
+    const options = {
+      amount: totalCost * 100,
+      currency: "INR",
+      receipt: newOrder._id,
+    };
 
-const verify = (async (req, res) => {
+    const order = await instance.orders.create(options);
 
-    try {
-        // getting the details back from our font-end
-        const {
-            orderCreationId,
-            razorpayPaymentId,
-            razorpayOrderId,
-            razorpaySignature,
-            slotIds,
-            courtId,
-            receipt,
-            date
-        } = req.body;
+    if (!order) return res.status(500).send("Some error occured");
 
-        // Creating our own digest
-        // The format should be like this:
-        // digest = hmac_sha256(orderCreationId + "|" + razorpayPaymentId, secret);
-        const shasum = crypto.createHmac("sha256", process.env.RP_SECRET_KEY,);
+    res.status(200).json(order);
+  } catch (error) {
+    console.log(error);
+    next();
+  }
+};
 
-        shasum.update(`${orderCreationId}|${razorpayPaymentId}`);
+const verify = async (req, res) => {
+  try {
+    // getting the details back from our font-end
+    const {
+      orderCreationId,
+      razorpayPaymentId,
+      razorpayOrderId,
+      razorpaySignature,
+      slotIds,
+      courtId,
+      receipt,
+      date,
+    } = req.body;
 
-        const digest = shasum.digest("hex");
+    // Creating our own digest
+    // The format should be like this:
+    // digest = hmac_sha256(orderCreationId + "|" + razorpayPaymentId, secret);
+    const shasum = crypto.createHmac("sha256", process.env.RP_SECRET_KEY);
 
-        // comaparing our digest with the actual signature
-        if (digest !== razorpaySignature)
-            return res.status(400).json({ msg: "Transaction not legit!" });
+    shasum.update(`${orderCreationId}|${razorpayPaymentId}`);
 
-        await COURT_SCHEDULES.updateMany({ _id: { $in: slotIds } }, { $set: { bookedBy: req.userId, orderId: receipt } });
-        await ORDERS.updateOne({ _id: receipt }, { $set: { status: 2, bookedBy: req.userId, courtId: courtId, date: new Date(date) } });
+    const digest = shasum.digest("hex");
 
-        // THE PAYMENT IS LEGIT & VERIFIED
-        // YOU CAN SAVE THE DETAILS IN YOUR DATABASE IF YOU WANT
+    // comaparing our digest with the actual signature
+    if (digest !== razorpaySignature)
+      return res.status(400).json({ msg: "Transaction not legit!" });
 
-        res.json({
-            msg: "Booking completed successfully",
-            orderId: razorpayOrderId,
-            paymentId: razorpayPaymentId,
-        });
-    } catch (error) {
-        res.status(500).send(error);
-    }
-})
+    await COURT_SCHEDULES.updateMany(
+      { _id: { $in: slotIds } },
+      { $set: { bookedBy: req.userId, orderId: receipt } }
+    );
+    await ORDERS.updateOne(
+      { _id: receipt },
+      {
+        $set: {
+          status: 2,
+          bookedBy: req.userId,
+          courtId: courtId,
+          date: new Date(date),
+        },
+      }
+    );
+
+    // THE PAYMENT IS LEGIT & VERIFIED
+    // YOU CAN SAVE THE DETAILS IN YOUR DATABASE IF YOU WANT
+
+    res.json({
+      msg: "Booking completed successfully",
+      orderId: razorpayOrderId,
+      paymentId: razorpayPaymentId,
+    });
+  } catch (error) {
+    res.status(500).send(error);
+  }
+};
 module.exports = { orders, verify };
