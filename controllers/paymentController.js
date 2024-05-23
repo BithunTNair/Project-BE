@@ -2,7 +2,7 @@
 const ORDERS = require('../models/ordersModel');
 const COURT_SCHEDULES = require('../models/courtSchedules');
 const Razorpay = require("razorpay");
-const crypto= require('crypto');
+const crypto = require('crypto');
 
 
 const orders = (async (req, res, next) => {
@@ -10,7 +10,7 @@ const orders = (async (req, res, next) => {
 
 
         const slotData = await COURT_SCHEDULES.find({ _id: { $in: req.body.slotIds } });
-        console.log({ slotData });
+       
         let totalCost = null;
         for (let slot of slotData) {
             if (slotData.bookedBy) {
@@ -21,6 +21,9 @@ const orders = (async (req, res, next) => {
                 totalCost += slot.cost
             }
         }
+        console.log(process.env.RP_SECRET_KEY);
+        console.log( process.env.RP_KEY_ID);
+
         const instance = new Razorpay({
             key_id: process.env.RP_KEY_ID,
             key_secret: process.env.RP_SECRET_KEY,
@@ -45,8 +48,8 @@ const orders = (async (req, res, next) => {
 
 
     } catch (error) {
-        console.log(err);
-        next()
+        console.log({error});
+        
     }
 });
 
@@ -80,7 +83,7 @@ const verify = (async (req, res) => {
             return res.status(400).json({ msg: "Transaction not legit!" });
 
         await COURT_SCHEDULES.updateMany({ _id: { $in: slotIds } }, { $set: { bookedBy: req.userId, orderId: receipt } });
-        await ORDERS.updateOne({ _id: receipt }, { $set: { status: 2, bookedBy: req.userId, courtId: courtId ,date:new Date(date)} });
+        await ORDERS.updateOne({ _id: receipt }, { $set: { status: 2, bookedBy: req.userId, courtId: courtId, date: new Date(date) } });
 
         // THE PAYMENT IS LEGIT & VERIFIED
         // YOU CAN SAVE THE DETAILS IN YOUR DATABASE IF YOU WANT
